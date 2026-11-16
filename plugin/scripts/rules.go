@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	pathpkg "path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -111,6 +112,7 @@ func check(sc *scope) []Finding {
 		c.checkValue(v)
 	}
 	c.checkEndpoints()
+	c.checkFilePaths()
 	c.checkSampler()
 	c.checkBatchSizes()
 	sort.SliceStable(c.out, func(i, j int) bool {
@@ -120,6 +122,47 @@ func check(sc *scope) []Finding {
 		return c.out[i].Line < c.out[j].Line
 	})
 	return c.out
+}
+
+// protocol/exporter.md defines these variables as paths to a trusted
+// certificate, a client key, and a client certificate.
+var certificatePathVars = map[string]bool{
+	"OTEL_EXPORTER_OTLP_CERTIFICATE":        true,
+	"OTEL_EXPORTER_OTLP_CLIENT_KEY":         true,
+	"OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE": true,
+}
+
+// checkFilePaths reports an absolute certificate or key path that no
+// volumeMount in the same Kubernetes container covers. A relative path depends
+// on the image's working directory, which isn't in the input, so it isn't
+// checked here.
+func (c *checker) checkFilePaths() {
+	if c.sc.Platform != "kubernetes" {
+		return
+	}
+	for _, name := range sortedKeys(c.eff) {
+		v := c.eff[name]
+		if !certificatePathVars[name] || !v.Known {
+			continue
+		}
+		p := strings.TrimSpace(v.Value)
+		if !strings.HasPrefix(p, "/") || pathCoveredByMount(p, c.sc.Mounts) {
+			continue
+		}
+		c.add(Medium, "LS108", v, fmt.Sprintf("%s names a file, but no volumeMount in this container covers %q. If the file isn't in the image, the SDK can't read it and TLS export fails.", name, p),
+			"mount the file at that path, or set the variable to the file's in-container path")
+	}
+}
+
+func pathCoveredByMount(filePath string, mounts []string) bool {
+	filePath = pathpkg.Clean(filePath)
+	for _, mount := range mounts {
+		mount = pathpkg.Clean(mount)
+		if filePath == mount || strings.HasPrefix(filePath, strings.TrimSuffix(mount, "/")+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *checker) checkName(v *envVar) {

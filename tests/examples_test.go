@@ -36,6 +36,55 @@ func TestExamples(t *testing.T) {
 	}
 }
 
+func TestCertificateMountsInManifest(t *testing.T) {
+	withoutMount := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          image: example/api
+          env:
+            - name: OTEL_EXPORTER_OTLP_CERTIFICATE
+              value: /etc/otel/ca.pem
+`
+	rep, r := runJSON(t, []byte(withoutMount), "-")
+	if r.code == 2 {
+		t.Fatalf("unexpected refusal: %s", r.stderr)
+	}
+	if got := strings.Join(rules(rep), ","); got != "MEDIUM LS108" {
+		t.Errorf("without mount: got %s, want MEDIUM LS108", got)
+	}
+
+	withMount := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          image: example/api
+          volumeMounts:
+            - name: otel-certs
+              mountPath: /etc/otel
+          env:
+            - name: OTEL_EXPORTER_OTLP_CERTIFICATE
+              value: /etc/otel/ca.pem
+`
+	rep, r = runJSON(t, []byte(withMount), "-")
+	if r.code == 2 {
+		t.Fatalf("unexpected refusal: %s", r.stderr)
+	}
+	if len(rep.Findings) != 0 {
+		t.Errorf("with mount: got %v", rules(rep))
+	}
+}
+
 // Real configs from projects that run them must stay quiet.
 func TestRealConfigsQuiet(t *testing.T) {
 	rep, r := runJSON(t, nil, "--fail-on", "low", "tests/testdata/real")

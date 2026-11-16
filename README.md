@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/GillMacedo/lostspans/actions/workflows/ci.yml/badge.svg)](https://github.com/GillMacedo/lostspans/actions/workflows/ci.yml) [![MIT license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**A Claude Code skill and Go CLI for people who deploy services instrumented with OpenTelemetry. It reads the `OTEL_` environment variables in Kubernetes manifests, `helm template` output, Docker Compose files and `.env` files, and reports the settings that make traces, metrics or logs go nowhere: an `OTEL_EXPORTER_OTLP_ENDPOINT` ending in `/v1/traces`, a signal endpoint with no path, an endpoint with no `http://`, a protocol of `http`, a timeout of `10` (milliseconds), headers written `Authorization: Bearer ...`, a sampler ratio with no sampler, and misspelled variable names.**
+**A Claude Code skill and Go CLI for people who deploy services instrumented with OpenTelemetry. It reads the `OTEL_` environment variables in Kubernetes manifests, `helm template` output, Docker Compose files and `.env` files, and reports the settings that make traces, metrics or logs go nowhere: an `OTEL_EXPORTER_OTLP_ENDPOINT` ending in `/v1/traces`, a signal endpoint with no path, an endpoint with no `http://`, a protocol of `http`, a timeout of `10` (milliseconds), headers written `Authorization: Bearer ...`, a sampler ratio with no sampler, certificate paths that no Kubernetes volumeMount covers, and misspelled variable names.**
 
 None of these fail at startup. The SDK logs one line, if any, and the service runs with no telemetry, or with telemetry the collector answers with 404. You find out when a dashboard is empty during an incident. lostspans checks the files before they ship, so it runs in CI next to your manifests, and it never connects to a cluster or a collector.
 
@@ -129,6 +129,7 @@ Add `--format json` for machine-readable output, with the file, line, scope, var
 | `LS105` | Medium | HTTP on port 4317 or gRPC on port 4318, the other protocol's default port |
 | `LS106` | Low | An `http://` endpoint with no port, which means port 80 |
 | `LS107` | Medium | `localhost` in a pod or Compose service where nothing else looks like a collector |
+| `LS108` | Medium | An absolute certificate, client key or client certificate path that no `volumeMount` in the same Kubernetes container covers |
 | `LS201` | High | A protocol that isn't `grpc`, `http/protobuf` or `http/json`, such as `http` |
 | `LS202` | Medium | A protocol or exporter in upper case. Go's autoexport rejects it |
 | `LS203` | High, Medium or Low | The `jaeger` exporter (removed from the spec, rejected by Go), an unknown exporter, or the deprecated `logging` |
@@ -156,7 +157,7 @@ Header values and passwords in endpoint URLs are never printed. Names with a lan
 
 ## The rules it follows
 
-Each rule follows the OpenTelemetry specification: `configuration/sdk-environment-variables.md` for names, types, enum values and empty values, `configuration/common.md` for durations and timeouts in milliseconds, `protocol/exporter.md` for how OTLP/HTTP builds URLs from base and signal endpoints and how headers are written, and `resource/sdk.md` for resource attributes.
+Each rule follows the OpenTelemetry specification: `configuration/sdk-environment-variables.md` for names, types, enum values and empty values, `configuration/common.md` for durations and timeouts in milliseconds, `protocol/exporter.md` for how OTLP/HTTP builds URLs from base and signal endpoints, how headers are written, and which certificate and key file paths the exporter accepts, and `resource/sdk.md` for resource attributes.
 
 Where the spec leaves room, the message says what Go's SDK does, and `tests/sdk` shows it. That test runs the real OpenTelemetry Go SDK (`go.opentelemetry.io/contrib/exporters/autoexport` v0.72.0, `go.opentelemetry.io/otel/sdk` v1.47.0) against a local OTLP/HTTP server for 20 configurations. For each broken one, the SDK does what the rule's message says, and lostspans reports the rule. For each healthy one, the span arrives and lostspans is quiet.
 

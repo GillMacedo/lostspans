@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	pathpkg "path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -26,6 +27,7 @@ type scope struct {
 	Line     int
 	Vars     []*envVar // OTEL_ variables in the order they're set; later ones win
 	Platform string    // "kubernetes", "compose" or "envfile"
+	Mounts   []string  // absolute volumeMount mountPaths in this container
 	// LocalCollector is true when something in the same network namespace
 	// may listen on the OTLP ports, so localhost endpoints can work.
 	LocalCollector bool
@@ -358,6 +360,11 @@ func k8sScopes(inv *inventory, file string, obj *Node) ([]*scope, error) {
 		if hostNet == "true" {
 			sc.LocalCollector = true
 		}
+		mounts, err := containerMounts(file, label, c.node)
+		if err != nil {
+			return nil, err
+		}
+		sc.Mounts = mounts
 		for j, o := range all {
 			if j != i && looksLikeCollector(o.node) {
 				sc.LocalCollector = true
@@ -367,6 +374,32 @@ func k8sScopes(inv *inventory, file string, obj *Node) ([]*scope, error) {
 			return nil, err
 		}
 		out = append(out, sc)
+	}
+	return out, nil
+}
+
+// containerMounts returns the absolute mountPath values for one container.
+// Only these paths can make a file from a volume visible inside the container.
+func containerMounts(file, label string, c *Node) ([]string, error) {
+	mounts := mapGet(c, "volumeMounts")
+	if mounts == nil || (mounts.Kind == ScalarNode && mounts.Tag == "!!null") {
+		return nil, nil
+	}
+	if mounts.Kind != SequenceNode {
+		return nil, untrusted{file, fmt.Sprintf("%s: volumeMounts at line %d isn't a list", label, mounts.Line)}
+	}
+	var out []string
+	for _, m := range mounts.Content {
+		if m.Kind != MappingNode {
+			return nil, untrusted{file, fmt.Sprintf("%s: volumeMount at line %d isn't an object", label, m.Line)}
+		}
+		mountPath, ok := scalar(mapGet(m, "mountPath"))
+		if !ok || mountPath == "" {
+			return nil, untrusted{file, fmt.Sprintf("%s: volumeMount at line %d has no mountPath", label, m.Line)}
+		}
+		if strings.HasPrefix(mountPath, "/") {
+			out = append(out, pathpkg.Clean(mountPath))
+		}
 	}
 	return out, nil
 }
