@@ -1,6 +1,6 @@
 ---
 name: checking-opentelemetry-env
-description: Checks OpenTelemetry SDK settings (OTEL_ environment variables) in Kubernetes manifests, helm template output, Docker Compose files and .env files for values that make traces, metrics or logs go nowhere without an error. Finds OTEL_EXPORTER_OTLP_ENDPOINT with a /v1/traces path (sent to /v1/traces/v1/traces), signal endpoints without a path, endpoints without http://, invalid or upper-case protocols, the removed jaeger exporter, timeouts written in seconds, malformed OTLP headers and resource attributes, sampler arguments that are ignored, localhost in a pod with no collector, and misspelled variable names. Use when traces or metrics don't show up in the backend, the collector logs 404s, after changing OTEL_ settings, or before merging deploy config.
+description: Checks OpenTelemetry SDK settings (OTEL_ environment variables) in Kubernetes manifests, helm template output, Docker Compose files and .env files for values that make traces, metrics or logs go nowhere without an error. Finds OTEL_EXPORTER_OTLP_ENDPOINT with a /v1/traces path (sent to /v1/traces/v1/traces), signal endpoints without a path, endpoints without http://, invalid or upper-case protocols, the removed jaeger exporter, timeouts written in seconds, malformed OTLP headers and resource attributes, sampler arguments that are ignored, localhost in a pod with no collector, certificate paths not covered by a volumeMount, and misspelled variable names. Use when traces or metrics don't show up in the backend, the collector logs 404s, after changing OTEL_ settings, or before merging deploy config.
 ---
 
 # Checking OpenTelemetry env settings
@@ -29,6 +29,7 @@ Exit 0 means no findings at or above `--fail-on` (default `high`), 1 means findi
 ## Read the findings
 
 - `LS101` to `LS107`, endpoints: a base URL with a `/v1/<signal>` path, a signal URL without one, a URL without `http://`, a protocol on the other protocol's default port, no port, or `localhost` in a pod with no collector.
+- `LS108`, certificate paths: an absolute `OTEL_EXPORTER_OTLP_CERTIFICATE`, `OTEL_EXPORTER_OTLP_CLIENT_KEY` or `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE` path that no `volumeMount` in the same Kubernetes container covers.
 - `LS201` to `LS206`, names of protocols, exporters, samplers, propagators and compression that SDKs don't accept. Go's autoexport also rejects upper case.
 - `LS301` to `LS304`, sampling: ratio 0, a ratio outside 0 to 1, an argument with no sampler set, or a sampler that records nothing.
 - `LS401` to `LS404`, numbers: timeouts under 100 ms (usually meant as seconds), values with units, a metric interval under a second, a batch larger than the queue.

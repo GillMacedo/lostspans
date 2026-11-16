@@ -140,6 +140,33 @@ func TestBadFlags(t *testing.T) {
 	}
 }
 
+func TestBadVolumeMountsRefused(t *testing.T) {
+	base := func(mounts string) string {
+		return `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          image: example/api
+` + mounts + `          env:
+            - name: OTEL_EXPORTER_OTLP_CERTIFICATE
+              value: /etc/otel/ca.pem
+`
+	}
+	cases := map[string]string{
+		"not a list":          base("          volumeMounts: nope\n"),
+		"entry not an object": base("          volumeMounts:\n            - nope\n"),
+		"missing a mountPath": base("          volumeMounts:\n            - name: certs\n"),
+	}
+	for name, data := range cases {
+		expectRefused(t, runTool(t, []byte(data), "-"), name)
+	}
+}
+
 func copyFile(t *testing.T, from, to string) {
 	t.Helper()
 	data, err := os.ReadFile(from)

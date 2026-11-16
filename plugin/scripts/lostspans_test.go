@@ -122,6 +122,36 @@ func TestRules(t *testing.T) {
 	}
 }
 
+func TestCertificatePathsRequireMounts(t *testing.T) {
+	const cert = "OTEL_EXPORTER_OTLP_CERTIFICATE=/etc/otel/ca.pem"
+	if got := rulesOf(check(envScope(cert))); strings.Join(got, ",") != "MEDIUM LS108" {
+		t.Errorf("missing mount: got %v", got)
+	}
+	for _, mount := range []string{"/etc/otel", "/etc/otel/ca.pem", "/"} {
+		sc := envScope(cert)
+		sc.Mounts = []string{mount}
+		if got := check(sc); len(got) != 0 {
+			t.Errorf("mount %s should cover the path, got %v", mount, rulesOf(got))
+		}
+	}
+	sc := envScope(cert)
+	sc.Mounts = []string{"/etc/otel-old"}
+	if got := rulesOf(check(sc)); strings.Join(got, ",") != "MEDIUM LS108" {
+		t.Errorf("mount prefix must be a path boundary, got %v", got)
+	}
+	sc = envScope(cert)
+	sc.Platform = "compose"
+	if got := check(sc); len(got) != 0 {
+		t.Errorf("Compose scopes have no Kubernetes volumeMounts, got %v", rulesOf(got))
+	}
+	for _, name := range []string{"OTEL_EXPORTER_OTLP_CLIENT_KEY", "OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE"} {
+		sc := envScope(name + "=/etc/otel/client.pem")
+		if got := rulesOf(check(sc)); strings.Join(got, ",") != "MEDIUM LS108" {
+			t.Errorf("%s: got %v", name, got)
+		}
+	}
+}
+
 func TestLocalhostWithCollectorSidecar(t *testing.T) {
 	sc := envScope("OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318")
 	sc.LocalCollector = true
