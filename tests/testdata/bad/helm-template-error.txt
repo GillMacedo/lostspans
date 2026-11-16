@@ -1,0 +1,1 @@
+Error: INSTALLATION FAILED: execution error at (shop/templates/deployment.yaml:41:22): otel.endpoint is required

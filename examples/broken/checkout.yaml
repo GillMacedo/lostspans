@@ -1,0 +1,65 @@
+# A made-up checkout service with OpenTelemetry settings that look right and
+# lose telemetry. Each mistake is one people make in real manifests.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-env
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318/v1/traces
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_EXPORTER_OTLP_TIMEOUT: "10"
+  OTEL_TRACES_SAMPLER_ARG: "0.25"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+spec:
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - name: checkout
+          image: example.com/checkout:1.8.0
+          envFrom:
+            - configMapRef:
+                name: otel-env
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: checkout
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=prod;team=payments
+            - name: VENDOR_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry
+                  key: api-key
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              value: "x-api-key: $(VENDOR_KEY)"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: invoice-sync
+spec:
+  schedule: "*/15 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: sync
+              image: example.com/invoice-sync:0.4.1
+              env:
+                - name: OTEL_SERVICE_NAME
+                  value: invoice-sync
+                - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+                  value: http://localhost:4318
+                - name: OTEL_EXPORTER_OTLP_METRIC_ENDPOINT
+                  value: http://otel-collector.observability:4318/v1/metrics

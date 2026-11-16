@@ -1,0 +1,13 @@
+{
+  "name": "lostspans",
+  "version": "0.1.0",
+  "description": "Find OpenTelemetry SDK settings (OTEL_ environment variables) in Kubernetes manifests, Docker Compose files and .env files that send traces, metrics and logs nowhere: wrong OTLP endpoint paths, invalid protocols, timeouts in seconds instead of milliseconds, malformed headers and resource attributes, and misspelled variable names.",
+  "author": {
+    "name": "Giulliano Macedo",
+    "url": "https://github.com/GillMacedo"
+  },
+  "homepage": "https://github.com/GillMacedo/lostspans",
+  "repository": "https://github.com/GillMacedo/lostspans",
+  "license": "MIT",
+  "keywords": ["opentelemetry", "otel", "otlp", "observability", "tracing", "kubernetes", "docker-compose", "environment-variables", "collector", "ci"]
+}

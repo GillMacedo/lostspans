@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shop
+spec:
+  containers:
+    - name: api
+      env:
+        - name: OTEL_SERVICE_NAME
+          value: shop

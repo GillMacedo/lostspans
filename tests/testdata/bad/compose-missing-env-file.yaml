@@ -1,0 +1,4 @@
+services:
+  api:
+    image: example.com/shop:1.0.0
+    env_file: does-not-exist.env

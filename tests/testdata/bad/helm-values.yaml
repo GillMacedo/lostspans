@@ -1,0 +1,5 @@
+otel:
+  endpoint: http://otel-collector:4318
+  OTEL_SERVICE_NAME: shop
+image:
+  repository: example.com/shop

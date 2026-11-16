@@ -1,0 +1,9 @@
+name: CI
+on: [push]
+env:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4318
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test

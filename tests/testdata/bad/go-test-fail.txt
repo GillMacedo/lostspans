@@ -1,0 +1,5 @@
+--- FAIL: TestRender (0.00s)
+    main_test.go:5: rendered manifest differs
+FAIL
+FAIL	x	0.001s
+FAIL

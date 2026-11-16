@@ -1,0 +1,9 @@
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "deployments.apps \"shop\" not found",
+  "reason": "NotFound",
+  "code": 404
+}

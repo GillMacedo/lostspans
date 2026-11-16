@@ -1,0 +1,14 @@
+{
+  "name": "lostspans-marketplace",
+  "description": "Marketplace for lostspans, which finds OpenTelemetry OTEL_ settings that send telemetry nowhere.",
+  "owner": {
+    "name": "Giulliano Macedo"
+  },
+  "plugins": [
+    {
+      "name": "lostspans",
+      "source": "./plugin",
+      "description": "Check OTEL_ environment variables in Kubernetes manifests, Compose files and .env files for settings that lose traces, metrics and logs without an error."
+    }
+  ]
+}

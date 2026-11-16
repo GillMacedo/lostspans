@@ -1,0 +1,5 @@
+.env
+.env.*
+!tests/testdata/real/opentelemetry-demo/.env
+.DS_Store
+/lostspans

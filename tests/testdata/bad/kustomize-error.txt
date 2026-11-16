@@ -1,0 +1,1 @@
+error: accumulating resources: accumulation err=accumulating resources from '../base': must build at directory: not a valid directory

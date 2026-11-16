@@ -1,0 +1,14 @@
+# A made-up shop with a collector. The api service reads its OpenTelemetry
+# settings from otel.env, which has two mistakes.
+services:
+  api:
+    image: example.com/shop-api:2.3.0
+    env_file: otel.env
+    environment:
+      OTEL_SERVICE_NAME: shop-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/metrics
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.140.0
+    ports:
+      - "4317:4317"
+      - "4318:4318"
