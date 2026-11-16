@@ -1,0 +1,65 @@
+# lostspans example workflow. Copy it to .github/workflows/lostspans.yml in
+# your own repository, then edit the chart path and the Compose path marked
+# below.
+#
+# lostspans exit codes:
+#   0  nothing at or above --fail-on, which is high by default
+#   1  findings at or above --fail-on
+#   2  the input could not be trusted, so nothing was checked
+#
+# The last step fails on 1 and on 2. Exit 2 is the one not to ignore: it means
+# helm template failed, a file is unreadable, or the input is not a manifest or
+# a Compose file, so the run proved nothing.
+name: lostspans
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lostspans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out your repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out lostspans
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: GillMacedo/lostspans
+          ref: v0.1.0
+          path: lostspans
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.22"
+
+      - name: Build lostspans
+        run: go build -o "$RUNNER_TEMP/lostspans" ./plugin/scripts
+        working-directory: lostspans
+
+      - name: Set up Helm
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
+        with:
+          version: v3.16.0
+
+      # Edit this path to your chart.
+      - name: Render the chart
+        run: helm template my-release ./chart > "$RUNNER_TEMP/rendered.yaml"
+
+      # Edit this path to your Compose files, or name a single file.
+      - name: Check the rendered chart and the Compose files
+        run: |
+          set +e
+          "$RUNNER_TEMP/lostspans" "$RUNNER_TEMP/rendered.yaml" ./compose
+          status=$?
+          set -e
+          if [ "$status" -eq 2 ]; then
+            echo "lostspans could not trust its input, so nothing was checked. See the log above." >&2
+          fi
+          exit "$status"
